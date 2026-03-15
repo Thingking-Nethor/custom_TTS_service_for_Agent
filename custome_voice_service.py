@@ -19,7 +19,7 @@ class CVS:
     def __init__(self):
         self.audio_available = True
         try:
-            self.json: dict = json.loads(str(Path(".\cvs.json").read_text(encoding="utf-8")))
+            self.json: dict = json.loads(str(Path(".\config.json").read_text(encoding="utf-8")))
         except FileNotFoundError:
             logging.error("❌ 配置文件 cvs.json 未找到")
         except json.JSONDecodeError:
