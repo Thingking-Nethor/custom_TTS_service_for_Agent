@@ -1,5 +1,5 @@
 [project]
-name = "customized_voice_service"
+name = "customized_TTS_service_for_Agent"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
