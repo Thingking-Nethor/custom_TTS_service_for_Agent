@@ -21,9 +21,9 @@ class CVS:
         try:
             self.json: dict = json.loads(str(Path(".\config.json").read_text(encoding="utf-8")))
         except FileNotFoundError:
-            logging.error("❌ 配置文件 cvs.json 未找到")
+            logging.error("❌ 配置文件 config.json 未找到")
         except json.JSONDecodeError:
-            logging.error("❌ 配置文件 cvs.json 格式错误")
+            logging.error("❌ 配置文件 config.json 格式错误")
         self.ts = self.json["text_sign"]
         self.url = self.json["curl"]
         self.params: dict = self.json["params"]
