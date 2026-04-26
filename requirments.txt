@@ -1,3 +1,3 @@
-aiohttp
-pygame
-pydub
+aiohttp>=3.13.5
+pygame>=0.25.1
+pydub>=2.6.1
