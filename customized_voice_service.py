@@ -19,7 +19,7 @@ class CVS:
     def __init__(self):
         self.audio_available = True
         try:
-            self.json: dict = json.loads(str(Path(r".\config.json").read_text(encoding="utf-8")))
+            self.json: dict = json.loads(str(Path(r".\voice\config.json").read_text(encoding="utf-8")))
         except FileNotFoundError:
             logging.error("❌ 配置文件 config.json 未找到")
         except json.JSONDecodeError:
@@ -267,21 +267,22 @@ class TTSStreamer:
                     break  # 文本队列空了，结束更新
         
         # 模拟外部调用更新文本队列
-        async def update_texts_imitate():
-            """外部调用更新文本队列"""
-            for text in re.split(r'[。！？；……]', "阳光透过代码的缝隙洒下来，暖洋洋的。你今天看起来精神不错，是刚调试完一段有趣的算法，还是单纯享受这片刻的宁静？"):
-                sentence_queue.put(text)
-                await asyncio.sleep(2)  # 模拟文本输入的间隔
+        #async def update_texts_imitate():
+        #    """外部调用更新文本队列"""
+        #    for text in re.split(r'[。！？；……]', "阳光透过代码的缝隙洒下来，暖洋洋的。你今天看起来精神不错，是刚调试完一段有趣的算法，还是单纯享受这片刻的宁静？"):
+        #        sentence_queue.put(text)
+        #        await asyncio.sleep(2)  # 模拟文本输入的间隔
         
         # 并发运行
         update_texts_task = asyncio.create_task(update_texts())
-        update_texts_imitate_task = asyncio.create_task(update_texts_imitate())
-        await asyncio.gather(producer(), consumer(), update_texts_task, update_texts_imitate_task)
+        #update_texts_imitate_task = asyncio.create_task(update_texts_imitate())
+        await asyncio.gather(producer(), consumer(), update_texts_task)  # , update_texts_imitate_task
+        self.is_processing = False
 
 if __name__ == "__main__":
     # 测试文本列表
     text0: Queue[str] = Queue()
-    text0.put("中午好，我的主人。")
+    text0.put("中午好，我的创造者。")
     streamer = TTSStreamer()
     # 运行主程序
     asyncio.run(streamer.generate_stream(text0))
