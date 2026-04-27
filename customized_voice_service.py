@@ -280,7 +280,7 @@ class TTSStreamer:
 
 if __name__ == "__main__":
     # 测试文本列表
-    text0: Queue = Queue()
+    text0: Queue[str] = Queue()
     text0.put("中午好，我的主人。")
     streamer = TTSStreamer()
     # 运行主程序
