@@ -65,12 +65,26 @@ class CVS:
             logging.error("param中不包含目标字符串，无法替换文本。")
             return self.params
     
-    async def send_requests(self, text: str = None):
-        """发送请求并处理响应"""
+    async def send_requests(self, text: str = None, ref_audio_index: int = 0, prompt_text_index: int = 0):
+        """选择相应的参考音频和参考文本并，发送请求并处理响应"""
         if not text.strip():
             logging.warning("⚠️ 输入文本为空，跳过生成")
             return None
+        #调用文本过滤函数
         text = self._filter_text(text)
+        
+        # 根据索引选择参考音频和参考文本
+        if self.json["variable_ref_audio_and_prompt_text"]:
+            if self.json["ref_audio_path_list"]:
+                self.params["ref_audio_path"] = self.json["ref_audio_path_list"][ref_audio_index % len(self.json["ref_audio_path_list"])]
+                print(f"✅ 选择参考音频: {self.params['ref_audio_path']}")
+            else:
+                pass
+            if self.json["prompt_text_list"]:
+                self.params["prompt_text"] = self.json["prompt_text_list"][prompt_text_index % len(self.json["prompt_text_list"])]
+                print(f"✅ 选择参考文本: {self.params['prompt_text']}")
+            else:
+                pass
         
         # 创建带超时的会话
         timeout = aiohttp.ClientTimeout(total=30, sock_read=20)
@@ -220,9 +234,16 @@ class CVS:
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class TTSStreamer:
-    def _init__(self):
+    def __init__(self):
         self.is_processing = False
-    async def generate_stream(self, sentence_queue: Queue[str]):
+        self.sentence_queue: Queue[str] = Queue()
+    
+    def _push_text(self, text: str):
+        """向文本队列中添加文本"""
+        self.sentence_queue.put(text)
+        print(f"✅ 已添加文本到队列: {text}")
+    
+    async def generate_stream(self):
         """流式生成"""
         self.cvs = CVS()
         self.is_processing = True
@@ -235,8 +256,8 @@ class TTSStreamer:
             #等待文本队列更新
             while not update_texts_task.done():
                 await asyncio.sleep(0.5)
-                while not sentence_queue.empty() if isinstance(sentence_queue, Queue) else sentence_queue:
-                    text = sentence_queue.get() if isinstance(sentence_queue, Queue) else sentence_queue.pop(0)
+                while not self.sentence_queue.empty() if isinstance(self.sentence_queue, Queue) else self.sentence_queue:
+                    text = self.sentence_queue.get() if isinstance(self.sentence_queue, Queue) else self.sentence_queue.pop(0)
                     i = 0  # 这里可以根据需要调整索引
                     print(f"🎤 生成第 {i+1} 段...")
                     file_path = await self.cvs.send_requests(text)
@@ -259,18 +280,19 @@ class TTSStreamer:
         async def update_texts():
             while True:
                 await asyncio.sleep(3)  # 每三秒检查一次
-                if not sentence_queue.empty() if isinstance(sentence_queue, Queue) else sentence_queue:
+                if not self.sentence_queue.empty() if isinstance(self.sentence_queue, Queue) else self.sentence_queue:
                     print("🔄 文本队列更新中...")
                     continue  # 还有文本，继续等待
                 else:
                     print("📭 文本队列已空，停止更新")
+                    # await asyncio.sleep(1)  # 挂起一秒等待可能的文本输入
                     break  # 文本队列空了，结束更新
         
         # 模拟外部调用更新文本队列
         #async def update_texts_imitate():
         #    """外部调用更新文本队列"""
         #    for text in re.split(r'[。！？；……]', "阳光透过代码的缝隙洒下来，暖洋洋的。你今天看起来精神不错，是刚调试完一段有趣的算法，还是单纯享受这片刻的宁静？"):
-        #        sentence_queue.put(text)
+        #        self.sentence_queue.put(text)
         #        await asyncio.sleep(2)  # 模拟文本输入的间隔
         
         # 并发运行
@@ -281,11 +303,13 @@ class TTSStreamer:
 
 if __name__ == "__main__":
     # 测试文本列表
-    text0: Queue[str] = Queue()
-    text0.put("中午好，我的创造者。")
+    text0: str = "中午好，我的创造者。"
     streamer = TTSStreamer()
     # 运行主程序
-    asyncio.run(streamer.generate_stream(text0))
+    streamer._push_text(text0)
+    for t in re.split(r'[。！？；……]', "阳光透过代码的缝隙洒下来，暖洋洋的。你今天看起来精神不错，是刚调试完一段有趣的算法，还是单纯享受这片刻的宁静？"):
+        streamer._push_text(t)
+    asyncio.run(streamer.generate_stream())
     if streamer.cvs.json["auto_delete"]:
         streamer.cvs.delete_audio()
     os.system("pause")
