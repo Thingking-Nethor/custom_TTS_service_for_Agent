@@ -1,0 +1,38 @@
+{
+    "text_sign": "${text}",
+    "curl": "http://127.0.0.1:9881/tts",
+    "params": {
+        "text": "${text}",
+        "text_lang": "zh",
+        "ref_audio_path": "D:\\GPT-SoVITS\\Material\\Dandelion(ja)\\slicer_opt\\GF2_Exilium 2025-08-19 13-17-36.wav_0001701888_0001895424.wav",
+        "aux_ref_audio_paths": [],
+        "prompt_text": "何もかも変わってしまったわ。それも悪い方向に。",
+        "prompt_lang": "all_ja",
+        "top_k": 5,
+        "top_p": 1, 
+        "temperature": 1,
+        "text_split_method": "cut3",
+        "batch_size": 1,
+        "batch_threshold": 0.75,
+        "split_bucket": true,
+        "speed_factor": 1.0,
+        "streaming_mode": false,
+        "seed": -1,
+        "parallel_infer": true,
+        "repetition_penalty": 1.35,
+        "sample_steps": 32,
+        "super_sampling": false
+    },
+    "variable_ref_audio_and_prompt_text": false,
+    "ref_audio_path_list": [
+        "D:\\GPT-SoVITS\\Material\\Dandelion(ja)\\slicer_opt\\GF2_Exilium 2025-08-19 13-17-36.wav_0001701888_0001895424.wav"
+    ],
+    "prompt_text_list": [
+        "何もかも変わってしまったわ。それも悪い方向に。"
+    ],
+    "filter_brackets": true,
+    "filter_special_chars": true,
+    "output_frequency": 44100,
+    "output_size": -16,
+    "auto_delete": true
+}
