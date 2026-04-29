@@ -1,7 +1,6 @@
 import asyncio
 from dotenv import load_dotenv
 import json
-from pathlib import Path
 from pydantic_ai import Agent
 from queue import Queue
 import re
@@ -11,13 +10,12 @@ from typing import Any
 import voice.customized_voice_service as cvs
 
 load_dotenv()
-ref_audio_path_index = 0
-prompt_text_index = 0
-prompt_file = Path(r"characters/丹德莱/conversation_style_prompt.txt")
-with open(prompt_file, "r", encoding="utf-8") as f:
-    system_prompt = f.read()
 with open("config.json", "r", encoding="utf-8") as f:
     config = json.load(f)
+with open(f"characters//{config['character_name']}//conversation_style_prompt.txt", "r", encoding="utf-8") as f:
+    system_prompt = f.read()
+ref_audio_path_index = 0
+prompt_text_index = 0
 text0: Queue[str] = Queue()
 streamer = cvs.TTSStreamer(config["voice_config_filename"])  #根据需要替换为你的配置文件名（json文件，不带扩展名）
 
