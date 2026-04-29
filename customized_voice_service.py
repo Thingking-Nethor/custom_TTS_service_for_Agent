@@ -65,23 +65,21 @@ class CVS:
             logging.error("param中不包含目标字符串，无法替换文本。")
             return self.params
     
-    async def send_requests(self, text: str = None, ref_audio_index: int = 0, prompt_text_index: int = 0):
+    async def send_requests(self, text: str = None, tone_index: int = 0):
         """选择相应的参考音频和参考文本并，发送请求并处理响应"""
         if not text.strip():
             logging.warning("⚠️ 输入文本为空，跳过生成")
             return None
-        #调用文本过滤函数
-        text = self._filter_text(text)
         
         # 根据索引选择参考音频和参考文本
         if self.json["variable_ref_audio_and_prompt_text"]:
             if self.json["ref_audio_path_list"]:
-                self.params["ref_audio_path"] = self.json["ref_audio_path_list"][ref_audio_index % len(self.json["ref_audio_path_list"])]
+                self.params["ref_audio_path"] = self.json["ref_audio_path_list"][tone_index]
                 print(f"✅ 选择参考音频: {self.params['ref_audio_path']}")
             else:
                 pass
             if self.json["prompt_text_list"]:
-                self.params["prompt_text"] = self.json["prompt_text_list"][prompt_text_index % len(self.json["prompt_text_list"])]
+                self.params["prompt_text"] = self.json["prompt_text_list"][tone_index]
                 print(f"✅ 选择参考文本: {self.params['prompt_text']}")
             else:
                 pass
@@ -200,7 +198,7 @@ class CVS:
                 # 等待播放完成
                 start_time = time.time()
                 while pygame.mixer.get_busy():
-                    await asyncio.sleep(0.1)  # 使用 asyncio.sleep 而不是 time.sleep
+                    await asyncio.sleep(0.1)
                     # 防止无限等待
                     if time.time() - start_time > 300:
                         logging.warning("音频播放超时，强制停止")
@@ -210,6 +208,9 @@ class CVS:
                 # 播放完成
                 self.is_playing = False
                 print("音频播放结束。")
+                
+                if self.json["auto_delete"]:
+                    self.delete_audio(file_path)  # 播放完成后删除音频文件
             
             except Exception as e:
                 self.is_playing = False
@@ -219,12 +220,15 @@ class CVS:
         except Exception as e:
             logging.error(f"❌ 读取音频文件失败：{e}")
         
-    def delete_audio(self):
-        '''删除生成的所有音频文件'''
+    def delete_audio(self, file_path: str = None):
+        '''删除生成的所选或所有音频文件'''
         output_dir = Path("output")
         try:
-            for file in output_dir.glob("*.wav"):
-                file.unlink()
+            if file_path:
+                Path(file_path).unlink()
+            else:
+                for file in output_dir.glob("*.wav"):
+                    file.unlink()
             print("✅ 已删除生成的音频文件。")
         except Exception as e:
             logging.warning(f"❌ 删除音频文件时发生错误: {e}")
@@ -235,17 +239,23 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 class TTSStreamer:
     def __init__(self):
+        self.cvs = CVS()
         self.is_processing = False
         self.sentence_queue: Queue[str] = Queue()
+        self.tone_index = 0  # 用于选择语气的索引
     
     def _push_text(self, text: str):
         """向文本队列中添加文本"""
-        self.sentence_queue.put(text)
+        self.sentence_queue.put(self.cvs._filter_text(text))  #调用文本过滤函数
         print(f"✅ 已添加文本到队列: {text}")
+    
+    def _change_tone(self, tone_index: int):
+        """更改语气索引"""
+        self.tone_index = tone_index
+        print(f"✅ 已更改语气索引为: {self.tone_index}")
     
     async def generate_stream(self):
         """流式生成"""
-        self.cvs = CVS()
         self.is_processing = True
         
         # 使用 asyncio.Queue 管理任务
@@ -260,7 +270,7 @@ class TTSStreamer:
                     text = self.sentence_queue.get() if isinstance(self.sentence_queue, Queue) else self.sentence_queue.pop(0)
                     i = 0  # 这里可以根据需要调整索引
                     print(f"🎤 生成第 {i+1} 段...")
-                    file_path = await self.cvs.send_requests(text)
+                    file_path = await self.cvs.send_requests(text, tone_index = self.tone_index)
                     if file_path:
                         await mission_queue.put((i, file_path))  # 将索引和文件路径一起推入队列
                     i += 1
@@ -284,9 +294,8 @@ class TTSStreamer:
                     print("🔄 文本队列更新中...")
                     continue  # 还有文本，继续等待
                 else:
-                    print("📭 文本队列已空，停止更新")
-                    # await asyncio.sleep(1)  # 挂起一秒等待可能的文本输入
-                    break  # 文本队列空了，结束更新
+                    await asyncio.sleep(1)  # 挂起一秒等待可能的文本输入
+                    # break  # 文本队列空了，结束更新
         
         # 模拟外部调用更新文本队列
         #async def update_texts_imitate():
@@ -310,6 +319,4 @@ if __name__ == "__main__":
     for t in re.split(r'[。！？；……]', "阳光透过代码的缝隙洒下来，暖洋洋的。你今天看起来精神不错，是刚调试完一段有趣的算法，还是单纯享受这片刻的宁静？"):
         streamer._push_text(t)
     asyncio.run(streamer.generate_stream())
-    if streamer.cvs.json["auto_delete"]:
-        streamer.cvs.delete_audio()
     os.system("pause")
