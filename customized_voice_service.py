@@ -128,9 +128,9 @@ class CVS:
         content = await response.read()
         
         # 保存文件
-        os.makedirs('output', exist_ok=True)
-        file_count = len(os.listdir('output'))
-        file_path = f'output/output{file_count}.wav'
+        os.makedirs('voice/output', exist_ok=True)
+        file_count = len(os.listdir('voice/output'))
+        file_path = f'voice/output/output{file_count}.wav'
         
         with open(file_path, 'wb') as f:
             f.write(content)
@@ -221,7 +221,7 @@ class CVS:
         
     def delete_audio(self, file_path: str = None):
         '''删除生成的所选或所有音频文件'''
-        output_dir = Path("output")
+        output_dir = Path("voice/output")
         try:
             if file_path:
                 Path(file_path).unlink()
@@ -290,7 +290,7 @@ class TTSStreamer:
                 if not self.sentence_queue.empty() if isinstance(self.sentence_queue, Queue) else self.sentence_queue:
                     print("🔄 文本队列更新中...")
                 else:
-                    if self.cvs.json["auto_delete"] and self.mission_queue.empty() and os.path.exists("output\output0.wav"):
+                    if self.cvs.json["auto_delete"] and self.mission_queue.empty() and os.path.exists("voice/output/output0.wav"):
                         self.cvs.delete_audio()  # 如果文本队列空了且任务队列也空了，删除音频文件
                     await asyncio.sleep(1)  # 挂起一秒等待可能的文本输入
                     self.is_processing = False
