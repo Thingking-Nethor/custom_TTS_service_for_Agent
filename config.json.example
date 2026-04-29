@@ -1,3 +1,4 @@
 {
-    "voice_config_filename": "config"
+    "voice_config_filename": "config",
+    "character_name": ""
 }
