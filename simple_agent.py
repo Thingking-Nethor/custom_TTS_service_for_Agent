@@ -1,5 +1,6 @@
 import asyncio
 from dotenv import load_dotenv
+import json
 from pathlib import Path
 from pydantic_ai import Agent
 from queue import Queue
@@ -12,16 +13,18 @@ import voice.customized_voice_service as cvs
 load_dotenv()
 ref_audio_path_index = 0
 prompt_text_index = 0
-prompt_file = Path(r"characters/XXX/conversation_style_prompt.txt")
+prompt_file = Path(r"characters/丹德莱/conversation_style_prompt.txt")
 with open(prompt_file, "r", encoding="utf-8") as f:
     system_prompt = f.read()
+with open("config.json", "r", encoding="utf-8") as f:
+    config = json.load(f)
 text0: Queue[str] = Queue()
-streamer = cvs.TTSStreamer()
+streamer = cvs.TTSStreamer(config["voice_config_filename"])  #根据需要替换为你的配置文件名（json文件，不带扩展名）
 
 def update_index(i: int) -> None:
     """
     请根据需要写入代表语气的参数i，来更新ref_audio_path_index和prompt_text_index的值
-    0为默认语气，1为生气，2为开心，3为伤心，4为惊讶，5为厌恶，6为恐惧
+    0为默认语气，1为开心，2为生气，3为伤心，4为惊讶，5为厌恶，6为恐惧
     """
     if i < 0:
         return
@@ -34,7 +37,7 @@ def update_index(i: int) -> None:
     global ref_audio_path_index, prompt_text_index
     ref_audio_path_index, prompt_text_index = i, i
 
-agent = Agent(model="deepseek:deepseek-reasoner", name="XXX",
+agent = Agent(model="deepseek:deepseek-v4-flash", name="Dandelion",
               description="An agent that does something useful.",
               system_prompt=system_prompt,
               tools=[update_index])
@@ -48,14 +51,14 @@ Thread(target=run_tts_async, args=(), daemon=True).start()
 
 
 def main():
-    history: list[Any] = []
+    history: Agent.Sequence[Agent.ModelMessage] = []
     global ref_audio_path_index, prompt_text_index
     while True:
         user_input = input("Input:")
         ref_audio_path_index, prompt_text_index = 0, 0
         resp: Agent[str] = agent.run_sync(user_input, message_history = history)
         history = list(resp.all_messages())
-        print("XXX：" + resp.output)
+        print("丹德莱：" + resp.output)
         # 测试文本列表
         for t in re.split(r'[。！？；……]', resp.output):
             streamer._push_text(t)
