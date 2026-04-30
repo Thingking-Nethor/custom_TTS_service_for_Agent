@@ -56,7 +56,7 @@ def main():
         ref_audio_path_index, prompt_text_index = 0, 0
         resp: Agent[str] = agent.run_sync(user_input, message_history = history)
         history = list(resp.all_messages())
-        print("丹德莱：" + resp.output)
+        print(f"{config['character_name']}: {resp.output}")
         # 测试文本列表
         for t in re.split(r'[。！？；……]', resp.output):
             streamer._push_text(t)
