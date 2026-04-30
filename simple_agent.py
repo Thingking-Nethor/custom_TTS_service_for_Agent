@@ -5,8 +5,6 @@ from pydantic_ai import Agent
 from queue import Queue
 import re
 from threading import Thread
-import tools
-from typing import Any
 import voice.customized_voice_service as cvs
 
 load_dotenv()
@@ -49,17 +47,36 @@ Thread(target=run_tts_async, args=(), daemon=True).start()
 
 
 def main():
-    history: Agent.Sequence[Agent.ModelMessage] = []
+    history: list = []
     global ref_audio_path_index, prompt_text_index
     while True:
         user_input = input("Input:")
         ref_audio_path_index, prompt_text_index = 0, 0
-        resp: Agent[str] = agent.run_sync(user_input, message_history = history)
-        history = list(resp.all_messages())
-        print(f"{config['character_name']}: {resp.output}")
-        # 测试文本列表
-        for t in re.split(r'[。！？；……]', resp.output):
-            streamer._push_text(t)
+        accumulated = ""
+        # 先打印角色名前缀，flush确保立即显示
+        print(f"{config['character_name']}: ", end="", flush=True)
+        # 使用流式同步调用，逐token获取LLM回复
+        result = agent.run_stream_sync(user_input, message_history=history)
+        for chunk in result.stream_text(delta=True):
+            # 实时打印每个token块，形成打字机效果
+            print(chunk, end="", flush=True)
+            accumulated += chunk
+            # 每遇到句末标点，立即将完整句子推入TTS队列
+            while True:
+                m = re.search(r'[。！？；……]', accumulated)
+                if not m:
+                    break
+                idx = m.end()
+                sentence = accumulated[:idx].strip()
+                accumulated = accumulated[idx:]
+                if sentence:
+                    streamer._push_text(sentence)
+        print()  # 流式输出结束后换行
+        # 从流式结果中提取完整对话历史
+        history = list(result.all_messages())
+        # 推入最后剩余的文本（不含句末标点的尾部）
+        if accumulated.strip():
+            streamer._push_text(accumulated.strip())
 
 if __name__ == "__main__":
     main()
