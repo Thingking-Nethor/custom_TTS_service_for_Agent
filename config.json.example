@@ -1,4 +1,5 @@
 {
-    "voice_config_filename": "config",
-    "character_name": ""
+    "voice_config_filename": "",    # 无需写后缀名
+    "character_name": "",
+    "tts_service": true    # 是否启用语音服务
 }
