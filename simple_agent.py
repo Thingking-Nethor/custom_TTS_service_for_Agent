@@ -1,4 +1,5 @@
 import asyncio
+import atexit
 from ui.conversation_ui import ConversationWindow
 from dotenv import load_dotenv
 import json
@@ -6,6 +7,7 @@ import os
 from pydantic_ai import Agent
 from queue import Queue
 import re
+import subprocess
 from threading import Thread
 import time
 import voice.customized_voice_service as cvs
@@ -15,6 +17,30 @@ with open("config.json", "r", encoding="utf-8") as f:
     config = json.load(f)
 with open(f"characters//{config['character_name']}//conversation_style_prompt.txt", "r", encoding="utf-8") as f:
     system_prompt = f.read()
+
+# 改写go_api_v2.bat中的路径参数为config中指定的GPT-SoVITS目录路径
+script_path = os.path.join(os.path.dirname(__file__), 'tools', 'go_api_v2.bat')
+with open(script_path, "r", encoding="utf-8") as f:
+    go_api_script_content = f.read()
+    go_api_script_content = re.sub(
+        r'/d ".*?"',
+        lambda _: f'/d "{config["GPT-SoVITS_directory_path"]}"',
+        go_api_script_content,
+    )
+with open(script_path, "w", encoding="utf-8") as f:
+    f.write(go_api_script_content)
+# 启动TTS服务（新命令行窗口）
+tts_api_process = subprocess.Popen(
+    f"{script_path}",
+    creationflags=subprocess.CREATE_NEW_CONSOLE,
+)
+
+def _cleanup_tts():
+    """程序退出时关闭TTS子进程窗口"""
+    tts_api_process.terminate()
+
+atexit.register(_cleanup_tts)
+
 ref_audio_path_index: int = 0
 prompt_text_index: int = 0
 tts_service_enabled: bool = config.get("tts_service", False)
@@ -72,11 +98,13 @@ def main():
         global ref_audio_path_index, prompt_text_index
         ref_audio_path_index, prompt_text_index = 0, 0
         accumulated = ""
+        full_response_chunks: list[str] = []
         conv_win.add_agent_prefix()
         result = agent.run_stream_sync(user_input, message_history=history)
         for chunk in result.stream_text(delta=True):
             conv_win.add_agent_chunk(chunk)
             accumulated += chunk
+            full_response_chunks.append(chunk)
             while True:
                 m = re.search(r'[。！？；……]', accumulated)
                 if not m:
@@ -91,7 +119,8 @@ def main():
         os.makedirs("logs", exist_ok=True)
         with open(f"logs\\{timestamp}.txt", "a", encoding="utf-8") as f:
             f.write(f"User: {user_input}\n\n")
-            f.write(f"{config['character_name']}: {''.join(result.all_text())}\n\n")
+            f.write(f"{config['character_name']}: {''.join(full_response_chunks)}\n\n")
+        print(f"对话已保存到 logs\\{timestamp}.txt")
         if accumulated.strip() and tts_service_enabled:
             streamer._push_text(accumulated.strip())
 
