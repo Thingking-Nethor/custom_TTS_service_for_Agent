@@ -21,11 +21,11 @@ class CVS:
         try:
             with open(f".\\voice\config\\{config_file}.json", "r", encoding="utf-8") as f:
                 self.json: dict = json.load(f)
-            print(f"✅ 已加载配置文件: {config_file}.json")
+            print(f"✅ 已加载TTS配置文件: {config_file}.json")
         except FileNotFoundError:
-            logging.error("❌ 配置文件 " + config_file + ".json 未找到")
+            logging.error("❌ TTS配置文件 " + config_file + ".json 未找到")
         except json.JSONDecodeError:
-            logging.error("❌ 配置文件 " + config_file + ".json 格式错误")
+            logging.error("❌ TTS配置文件 " + config_file + ".json 格式错误")
         self.ts = self.json["text_sign"]
         self.url = self.json["curl"]
         self.params: dict = self.json["params"]
