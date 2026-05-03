@@ -21,13 +21,13 @@ if os.path.getmtime("config.json") > float(os.getenv("CONFIG_MODIFICATION_TIMEST
     config_changed: bool = True
 else:
     config_changed: bool = False
-print("✅ 配置文件修改情况检查完毕")
+print("✅ 主配置文件修改情况检查完毕")
 
 # 从config.json中读取配置项，并根据需要启动TTS服务
 with open("config.json", "r", encoding="utf-8") as f:
     config = json.load(f)
 tts_service_enabled: bool = config["tts"].get("tts_service", False)
-print("✅ 配置文件加载完成")
+print("✅ 主配置文件加载完成")
 with open(f"characters//{config['character_name']}//conversation_style_prompt.txt", "r", encoding="utf-8") as f:
     system_prompt = f.read()
 print("✅ 系统提示词加载完成")
