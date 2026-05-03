@@ -2,5 +2,14 @@
     "voice_config_filename": "",    # 无需写后缀名
     "character_name": "",
     "user_name": "",
-    "tts_service": true    # 是否启用语音服务
+    "tts": {
+        "tts_service": true,    # 是否启用语音服务
+        "GPT-SoVITS_directory_path": ""
+    },
+    "stt": {
+        "stt_service": true,
+        "base_url": "http://",
+        "api_key": "",
+        "model": "whisper-1"
+    }
 }
