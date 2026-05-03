@@ -1,7 +1,7 @@
 {
     "text_sign": "${text}",
     "curl": "http://127.0.0.1:9880/tts",
-    "params": {
+    "params": {                         #post请求参数，如果要使用get请求请将这一项设为none
         "text": "${text}",
         "text_lang": "zh",
         "ref_audio_path": "",
