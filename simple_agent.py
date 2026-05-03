@@ -1,6 +1,8 @@
 import asyncio
+from ui.conversation_ui import ConversationWindow
 from dotenv import load_dotenv
 import json
+import os
 from pydantic_ai import Agent
 from queue import Queue
 import re
@@ -30,10 +32,12 @@ def update_index(i: int) -> None:
         return
     if i > 6:
         i = 0
-    elif (r:= len(streamer.cvs.json["ref_audio_path_list"])) < 7 or (p:= len(streamer.cvs.json["prompt_text_list"])) < 7:
-        # 如果参考音频列表或参考文本列表的长度不足7，则重置索引为0，使用默认语气
-        if min(r, p) <= i:
-            i = 0
+    else:
+        r = len(streamer.cvs.json["ref_audio_path_list"])
+        p = len(streamer.cvs.json["prompt_text_list"])
+        if r < 7 or p < 7:
+            if min(r, p) <= i:
+                i = 0
     global ref_audio_path_index, prompt_text_index
     ref_audio_path_index, prompt_text_index = i, i
     print("切换到语气：", tone_map.get(i))
@@ -56,19 +60,21 @@ if tts_service_enabled:
 def main():
     history: list = []
     global ref_audio_path_index, prompt_text_index
-    while True:
-        user_input = input("Input:")
+
+    conv_win = ConversationWindow(config["character_name"], on_send=None, user_name=config["user_name"])
+    conv_win.add_agent_prefix()
+    conv_win.add_agent_chunk(f"你好！我是{config['character_name']}。\n")
+
+    def handle_input(user_input: str):
+        nonlocal history
+        global ref_audio_path_index, prompt_text_index
         ref_audio_path_index, prompt_text_index = 0, 0
         accumulated = ""
-        # 先打印角色名前缀，flush确保立即显示
-        print(f"{config['character_name']}: ", end="", flush=True)
-        # 使用流式同步调用，逐token获取LLM回复
+        conv_win.add_agent_prefix()
         result = agent.run_stream_sync(user_input, message_history=history)
         for chunk in result.stream_text(delta=True):
-            # 实时打印每个token块，形成打字机效果
-            print(chunk, end="", flush=True)
+            conv_win.add_agent_chunk(chunk)
             accumulated += chunk
-            # 每遇到句末标点，立即将完整句子推入TTS队列
             while True:
                 m = re.search(r'[。！？；……]', accumulated)
                 if not m:
@@ -78,17 +84,20 @@ def main():
                 accumulated = accumulated[idx:]
                 if sentence and tts_service_enabled:
                     streamer._push_text(sentence)
-        print()  # 流式输出结束后换行
-        # 从流式结果中提取完整对话历史
         history = list(result.all_messages())
-        # 记录历史对话到文件
         timestamp: str = time.strftime("%Y-%m-%d", time.localtime())
-        with open(f"log\\{timestamp}.txt", "a", encoding="utf-8") as f:
+        os.makedirs("logs", exist_ok=True)
+        with open(f"logs\\{timestamp}.txt", "a", encoding="utf-8") as f:
             f.write(f"User: {user_input}\n\n")
             f.write(f"{config['character_name']}: {''.join(result.all_text())}\n\n")
-        # 推入最后剩余的文本（不含句末标点的尾部）
         if accumulated.strip() and tts_service_enabled:
             streamer._push_text(accumulated.strip())
+
+    def on_send(user_input: str):
+        Thread(target=handle_input, args=(user_input,), daemon=True).start()
+
+    conv_win.on_send = on_send
+    conv_win.run()
 
 if __name__ == "__main__":
     main()
