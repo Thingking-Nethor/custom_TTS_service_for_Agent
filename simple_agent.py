@@ -29,9 +29,10 @@ tts_service_enabled: bool = config["tts"].get("tts_service", False)
 with open(f"characters//{config['character_name']}//conversation_style_prompt.txt", "r", encoding="utf-8") as f:
     system_prompt = f.read()
 
+script_path = os.path.join(os.path.dirname(__file__), 'tools', 'go_api_v2.bat')
+
 # 改写go_api_v2.bat中的路径参数为config中指定的GPT-SoVITS目录路径
 if config_changed and tts_service_enabled:
-    script_path = os.path.join(os.path.dirname(__file__), 'tools', 'go_api_v2.bat')
     with open(script_path, "r", encoding="utf-8") as f:
         go_api_script_content = f.read()
         go_api_script_content = re.sub(
@@ -41,6 +42,7 @@ if config_changed and tts_service_enabled:
         )
     with open(script_path, "w", encoding="utf-8") as f:
         f.write(go_api_script_content)
+        del go_api_script_content
 
 # 启动TTS服务（新命令行窗口）
 if tts_service_enabled:
