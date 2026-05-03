@@ -15,6 +15,7 @@ import voice.customized_voice_service as cvs
 load_dotenv()
 with open("config.json", "r", encoding="utf-8") as f:
     config = json.load(f)
+tts_service_enabled: bool = config["tts"].get("tts_service", False)
 with open(f"characters//{config['character_name']}//conversation_style_prompt.txt", "r", encoding="utf-8") as f:
     system_prompt = f.read()
 
@@ -24,16 +25,17 @@ with open(script_path, "r", encoding="utf-8") as f:
     go_api_script_content = f.read()
     go_api_script_content = re.sub(
         r'/d ".*?"',
-        lambda _: f'/d "{config["GPT-SoVITS_directory_path"]}"',
+        lambda _: f'/d "{config["tts"]["GPT-SoVITS_directory_path"]}"',
         go_api_script_content,
     )
 with open(script_path, "w", encoding="utf-8") as f:
     f.write(go_api_script_content)
 # 启动TTS服务（新命令行窗口）
-tts_api_process = subprocess.Popen(
-    f"{script_path}",
-    creationflags=subprocess.CREATE_NEW_CONSOLE,
-)
+if tts_service_enabled:
+    tts_api_process = subprocess.Popen(
+        f"{script_path}",
+        creationflags=subprocess.CREATE_NEW_CONSOLE,
+    )
 
 def _cleanup_tts():
     """程序退出时关闭TTS子进程窗口"""
@@ -43,7 +45,6 @@ atexit.register(_cleanup_tts)
 
 ref_audio_path_index: int = 0
 prompt_text_index: int = 0
-tts_service_enabled: bool = config.get("tts_service", False)
 text0: Queue[str] = Queue()
 if tts_service_enabled:
     streamer = cvs.TTSStreamer(config["voice_config_filename"])  #根据需要替换为你的配置文件名（json文件，不带扩展名）
