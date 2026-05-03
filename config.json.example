@@ -2,9 +2,14 @@
     "voice_config_filename": "",    # 无需写后缀名
     "character_name": "",
     "user_name": "",
+    "api": {
+        "base_url": "",
+        "api_key": "",
+        "model": ""
+    },
     "tts": {
         "tts_service": true,    # 是否启用语音服务
-        "GPT-SoVITS_directory_path": ""
+        "GPT-SoVITS_directory_path": ""    #GPT-SoVITS的根目录
     },
     "stt": {
         "stt_service": true,
