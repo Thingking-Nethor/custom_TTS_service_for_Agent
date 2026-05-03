@@ -148,6 +148,7 @@ if __name__ == "__main__":
             print("✅ TTS service started successfully.")
     except Exception as e:
         print(f"❌ Failed to start TTS service: {e}")
+        tts_service_enabled = False
 
     # 运行tts主程序
     if tts_service_enabled:
