@@ -144,10 +144,15 @@ def main():
     conv_win.run()
 
 if __name__ == "__main__":
-    agent = Agent(model="deepseek:deepseek-v4-flash", name="Dandelion",
-                  description="An agent that does something useful.",
-                  system_prompt=system_prompt,
-                  tools=[update_index])
+    try:
+        agent = Agent(model="deepseek:deepseek-v4-flash", name="Dandelion",
+                      description="An agent that does something useful.",
+                      system_prompt=system_prompt,
+                      tools=[update_index])
+        print("✅ 语言模型代理创建成功")
+    except Exception as e:
+        print(f"❌ 无法创建语言模型代理: {e}")
+        exit(1)
 
     # 启动TTS服务（新命令行窗口）
     try:
