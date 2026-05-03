@@ -2,7 +2,7 @@
     "voice_config_filename": "",    # 无需写后缀名
     "character_name": "",
     "user_name": "",
-    "api": {
+    "api": {                    #该功能未上线，无需填写，默认使用DeepSeek的API服务
         "base_url": "",
         "api_key": "",
         "model": ""
@@ -11,7 +11,7 @@
         "tts_service": true,    # 是否启用语音服务
         "GPT-SoVITS_directory_path": ""    #GPT-SoVITS的根目录
     },
-    "stt": {
+    "stt": {                   #该功能未上线，无需填写
         "stt_service": true,
         "base_url": "http://",
         "api_key": "",
