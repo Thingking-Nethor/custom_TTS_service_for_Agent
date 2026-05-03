@@ -21,13 +21,16 @@ if os.path.getmtime("config.json") > float(os.getenv("CONFIG_MODIFICATION_TIMEST
     config_changed: bool = True
 else:
     config_changed: bool = False
+print("✅ 配置文件修改情况检查完毕")
 
 # 从config.json中读取配置项，并根据需要启动TTS服务
 with open("config.json", "r", encoding="utf-8") as f:
     config = json.load(f)
 tts_service_enabled: bool = config["tts"].get("tts_service", False)
+print("✅ 配置文件加载完成")
 with open(f"characters//{config['character_name']}//conversation_style_prompt.txt", "r", encoding="utf-8") as f:
     system_prompt = f.read()
+print("✅ 系统提示词加载完成")
 
 script_path = os.path.join(os.path.dirname(__file__), 'tools', 'go_api_v2.bat')
 
@@ -43,12 +46,14 @@ if config_changed and tts_service_enabled:
     with open(script_path, "w", encoding="utf-8") as f:
         f.write(go_api_script_content)
         del go_api_script_content
+print("✅ TTS服务脚本路径参数检查并更新完成")
 
 ref_audio_path_index: int = 0
 prompt_text_index: int = 0
 text0: Queue[str] = Queue()
 if tts_service_enabled:
     streamer = cvs.TTSStreamer(config["voice_config_filename"])  #根据需要替换为你的配置文件名（json文件，不带扩展名）
+print("✅ TTS服务配置加载完成")
 
 def update_index(i: int) -> None:
     """
@@ -81,6 +86,7 @@ def check():
             config_example = re.sub(r"#.*", "", config_example)
         with open("config.json", "w", encoding="utf-8") as f:
             f.write(config_example)
+        print("⚠️ 未找到config.json，已创建默认配置文件")
 
 def _cleanup_tts():
     """程序退出时关闭TTS子进程窗口"""
@@ -90,10 +96,15 @@ atexit.register(_cleanup_tts)
 def main():
     history: list = []
     global ref_audio_path_index, prompt_text_index
-
-    conv_win = ConversationWindow(config["character_name"], on_send=None, user_name=config["user_name"])
-    conv_win.add_agent_prefix()
-    conv_win.add_agent_chunk(f"你好！我是{config['character_name']}。\n")
+    
+    try:
+        conv_win = ConversationWindow(config["character_name"], on_send=None, user_name=config["user_name"])
+        conv_win.add_agent_prefix()
+        conv_win.add_agent_chunk(f"你好！我是{config['character_name']}。\n")
+        print("✅ 对话窗口创建成功")
+    except Exception as e:
+        print(f"❌ 无法创建对话窗口: {e}")
+        return
 
     def handle_input(user_input: str):
         nonlocal history
@@ -145,9 +156,9 @@ if __name__ == "__main__":
                 f"{script_path}",
                 creationflags=subprocess.CREATE_NEW_CONSOLE,
             )
-            print("✅ TTS service started successfully.")
+            print("✅ TTS服务启动成功")
     except Exception as e:
-        print(f"❌ Failed to start TTS service: {e}")
+        print(f"❌ 启动TTS服务失败: {e}")
         tts_service_enabled = False
 
     # 运行tts主程序
