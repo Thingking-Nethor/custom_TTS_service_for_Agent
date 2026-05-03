@@ -119,7 +119,7 @@ class CVS:
         """处理响应结果"""
         if response.status != 200:
             error_text = await response.text()
-            logging.error(f"❌ 语音生成失败 {response.status}: {error_text}")
+            logging.error(f"❌ 语音生成失败 {response.status}: {error_text}\n请检查配置文件中的URL和参数是否正确，并确保服务器正常运行。")
             return None
         
         print("✅ 语音生成成功！")
