@@ -56,6 +56,8 @@ def run_tts_async():
 if tts_service_enabled:
     Thread(target=run_tts_async, args=(), daemon=True).start()
 
+def check():
+    os.path.exists("logs") or os.mkdir("logs")
 
 def main():
     history: list = []
@@ -100,4 +102,5 @@ def main():
     conv_win.run()
 
 if __name__ == "__main__":
+    check()
     main()
