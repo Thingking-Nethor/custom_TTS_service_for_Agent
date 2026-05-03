@@ -2,6 +2,7 @@ import asyncio
 import atexit
 from ui.conversation_ui import ConversationWindow
 from dotenv import load_dotenv
+from dotenv import set_key
 import json
 import os
 from pydantic_ai import Agent
@@ -13,6 +14,15 @@ import time
 import voice.customized_voice_service as cvs
 
 load_dotenv()
+
+# 检查config.json是否被修改过，如果被修改过则更新.env中的CONFIG_MODIFICATION_TIMESTAMP的值
+if os.path.getmtime("config.json") > float(os.getenv("CONFIG_MODIFICATION_TIMESTAMP", "0")):
+    set_key(".env", "CONFIG_MODIFICATION_TIMESTAMP", str(os.path.getmtime("config.json")))
+    config_changed: bool = True
+else:
+    config_changed: bool = False
+
+# 从config.json中读取配置项，并根据需要启动TTS服务
 with open("config.json", "r", encoding="utf-8") as f:
     config = json.load(f)
 tts_service_enabled: bool = config["tts"].get("tts_service", False)
@@ -20,16 +30,18 @@ with open(f"characters//{config['character_name']}//conversation_style_prompt.tx
     system_prompt = f.read()
 
 # 改写go_api_v2.bat中的路径参数为config中指定的GPT-SoVITS目录路径
-script_path = os.path.join(os.path.dirname(__file__), 'tools', 'go_api_v2.bat')
-with open(script_path, "r", encoding="utf-8") as f:
-    go_api_script_content = f.read()
-    go_api_script_content = re.sub(
-        r'/d ".*?"',
-        lambda _: f'/d "{config["tts"]["GPT-SoVITS_directory_path"]}"',
-        go_api_script_content,
-    )
-with open(script_path, "w", encoding="utf-8") as f:
-    f.write(go_api_script_content)
+if config_changed and tts_service_enabled:
+    script_path = os.path.join(os.path.dirname(__file__), 'tools', 'go_api_v2.bat')
+    with open(script_path, "r", encoding="utf-8") as f:
+        go_api_script_content = f.read()
+        go_api_script_content = re.sub(
+            r'/d ".*?"',
+            lambda _: f'/d "{config["tts"]["GPT-SoVITS_directory_path"]}"',
+            go_api_script_content,
+        )
+    with open(script_path, "w", encoding="utf-8") as f:
+        f.write(go_api_script_content)
+
 # 启动TTS服务（新命令行窗口）
 if tts_service_enabled:
     tts_api_process = subprocess.Popen(
@@ -79,7 +91,6 @@ def run_tts_async():
     asyncio.run(streamer.generate_stream())
 
 # 运行tts主程序
-
 if tts_service_enabled:
     Thread(target=run_tts_async, args=(), daemon=True).start()
 
