@@ -9,6 +9,7 @@
     },
     "tts": {
         "tts_service": true,    # 是否启用语音服务
+        "auto_start_GPT-SoVITS_api": true,    #是否自动启动GPT-SoVITS的API服务
         "GPT-SoVITS_directory_path": ""    #GPT-SoVITS的根目录
     },
     "stt": {                   #该功能未上线，无需填写
