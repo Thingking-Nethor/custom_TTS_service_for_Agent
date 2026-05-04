@@ -32,5 +32,6 @@
     "filter_special_chars": true,
     "output_frequency": 44100,
     "output_size": -16,
-    "auto_delete": true
+    "save_audio": false,
+    "output_path": ""    #填写绝对路径，程序默认为相对路径".\voice\output\output"
 }
