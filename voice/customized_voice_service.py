@@ -4,11 +4,9 @@
 import aiohttp
 import asyncio
 import logging
-from pathlib import Path
 import json
 import os
 import pygame
-import pydub
 from queue import Queue
 import io
 import re
@@ -32,6 +30,7 @@ class CVS:
         self._mixer_initialized = False
         self._current_sound = None
         self.is_playing = False  # 添加播放状态标志
+        self._response: bytes = None  # 存储当前响应的音频数据
         print(f"✅ 已加载配置文件，目标字符串: {self.ts}")
 
     def _filter_text(self, text: str = None):
@@ -76,16 +75,12 @@ class CVS:
         
         # 根据索引选择参考音频和参考文本
         if self.json["variable_ref_audio_and_prompt_text"]:
-            if self.json["ref_audio_path_list"]:
+            if self.json["ref_audio_path_list"] and self.json["prompt_text_list"]:
                 self.params["ref_audio_path"] = self.json["ref_audio_path_list"][tone_index]
-                print(f"✅ 选择参考音频: {self.params['ref_audio_path']}")
-            else:
-                pass
-            if self.json["prompt_text_list"]:
                 self.params["prompt_text"] = self.json["prompt_text_list"][tone_index]
-                print(f"✅ 选择参考文本: {self.params['prompt_text']}")
+                print(f"✅ 选择参考音频: {self.params['ref_audio_path']}\n✅ 选择参考文本: {self.params['prompt_text']}")
             else:
-                pass
+                pass  # 如果没有提供列表，就使用默认的参数值（不替换）
         
         # 创建带超时的会话
         timeout = aiohttp.ClientTimeout(total=30, sock_read=20)
@@ -95,16 +90,16 @@ class CVS:
             if self.params is None:
                 print(f"✅ 发送GET请求: {self.replace_in_string(text)}...")
                 async with aiohttp.ClientSession(timeout=timeout) as session:
-                    async with session.get(self.replace_in_string(text)) as response:
-                        return await self._handle_response(response)
+                    async with session.get(self.replace_in_string(text)) as self._response:
+                        return await self._handle_response()
             else:
                 print(f"✅ 发送POST请求: {self.url}...")
                 async with aiohttp.ClientSession(timeout=timeout) as session:
                     async with session.post(
                         self.url, 
                         json=self.replace_in_dict(text)
-                    ) as response:
-                        return await self._handle_response(response)
+                    ) as self._response:
+                        return await self._handle_response()
         
         except asyncio.TimeoutError:
             logging.error("❌ 请求超时")
@@ -116,43 +111,41 @@ class CVS:
             logging.error(f"❌ 请求发送失败: {e}")
             return None
     
-    async def _handle_response(self, response):
+    async def _handle_response(self):
         """处理响应结果"""
-        if response.status != 200:
-            error_text = await response.text()
-            logging.error(f"❌ 语音生成失败 {response.status}: {error_text}\n请检查配置文件中的URL和参数是否正确，并确保服务器正常运行。")
+        if self._response.status != 200:
+            error_text = await self._response.text()
+            logging.error(f"❌ 语音生成失败 {self._response.status}: {error_text}\n请检查配置文件中的URL和参数是否正确，并确保服务器正常运行。")
             return None
-        
+
         print("✅ 语音生成成功！")
-        
-        # 读取响应内容
-        content = await response.read()
-        
-        # 保存文件
-        os.makedirs('voice/output', exist_ok=True)
-        file_count = len(os.listdir('voice/output'))
-        file_path = f'voice/output/output{file_count}.wav'
-        
-        with open(file_path, 'wb') as f:
-            f.write(content)
-        
-        print(f"✅ 语音已保存至 {file_path}")
-        return file_path  # 返回文件路径供调用者使用
+
+        # 读取响应内容到内存
+        content = await self._response.read()
+
+        # 仅在 save_audio 为 True 时保存到硬盘
+        if self.json.get("save_audio", False):
+            os.makedirs('voice/output', exist_ok=True)
+            file_count = len(os.listdir('voice/output'))
+            if os.path.abspath(self.json.get("output_path")):
+                file_path = os.path.join(self.json["output_path"], f'output{file_count}.wav')
+            else:
+                file_path = f'voice/output/output{file_count}.wav'
+            with open(file_path, 'wb') as f:
+                f.write(content)
+            print(f"✅ 语音已保存至 {file_path}")
+
+        return content  # 返回音频字节数据
     
-    async def play_audio(self, file_path: str):
-        '''播放生成的音频'''
-        print(f"▶️ 播放: {file_path}")
-        
-        # 检查文件是否存在
-        if not os.path.exists(file_path):
-            print(f"❌ 音频文件不存在: {file_path}")
+    async def play_audio(self, audio_data: bytes):
+        '''播放音频（直接从内存）'''
+        print("▶️ 开始播放音频...")
+
+        if not audio_data:
+            logging.warning("音频数据为空")
             return
-        
+
         try:
-            # 读取文件为二进制数据
-            with open(file_path, 'rb') as f:
-                audio_data = f.read()  # 读取为bytes，而不是文件对象
-            
             # 确保 mixer 只初始化一次
             if not self._mixer_initialized:
                 try:
@@ -168,70 +161,51 @@ class CVS:
                     logging.warning(f"音频系统初始化失败：{e}")
                     self.audio_available = False
                     return
-            
+
             if not self.audio_available:
                 logging.warning("音频系统不可用，无法播放音频")
                 return
-            
-            if not audio_data:
-                logging.warning("音频数据为空")
-                return
-            
+
             try:
-                # 通过 pydub 检测音频格式和参数
-                audio = pydub.AudioSegment.from_file(io.BytesIO(audio_data), format="wav")
-                
                 # 停止当前正在播放的音频
                 if self._current_sound and self._current_sound.get_num_channels() > 0:
                     self._current_sound.stop()
                 if pygame.mixer.music.get_busy():
                     pygame.mixer.music.stop()
-                
+
                 # 短暂等待确保停止完成
                 await asyncio.sleep(0.05)
-                
-                # 创建新的 Sound 对象（适合短音频，非阻塞）
+
+                # 直接从内存创建 Sound 对象并播放
                 self._current_sound = pygame.mixer.Sound(io.BytesIO(audio_data))
-                
-                # 播放音频（非阻塞）
                 self._current_sound.play()
                 self.is_playing = True
                 print("正在播放音频...")
-                
+
                 # 等待播放完成
                 start_time = time.time()
                 while pygame.mixer.get_busy():
                     await asyncio.sleep(0.1)
-                    # 防止无限等待
                     if time.time() - start_time > 300:
                         logging.warning("音频播放超时，强制停止")
                         pygame.mixer.stop()
                         break
-                
-                # 播放完成
+
                 self.is_playing = False
                 print("音频播放结束。")
-            
+
             except Exception as e:
                 self.is_playing = False
-                logging.error(f"❌ 音频播放失败：{e}")  # 修复了日志格式
+                logging.error(f"❌ 音频播放失败：{e}")
                 raise e
-        
+
         except Exception as e:
-            logging.error(f"❌ 读取音频文件失败：{e}")
+            logging.error(f"❌ 音频播放失败：{e}")
         
-    def delete_audio(self, file_path: str = None):
-        '''删除生成的所选或所有音频文件'''
-        output_dir = Path("voice/output")
-        try:
-            if file_path:
-                Path(file_path).unlink()
-            else:
-                for file in output_dir.glob("*.wav"):
-                    file.unlink()
-            print("✅ 已删除生成的音频文件。")
-        except Exception as e:
-            logging.warning(f"❌ 删除音频文件时发生错误: {e}")
+    def delete_audio(self):
+        '''清除内存中的音频数据'''
+        self._response = None  # 清除当前音频数据
+        print("✅ 已清除内存中的音频缓存。")
 
 
 # 配置日志
@@ -268,21 +242,21 @@ class TTSStreamer:
                     text = self.sentence_queue.get() if isinstance(self.sentence_queue, Queue) else self.sentence_queue.pop(0)
                     i = 0  # 这里可以根据需要调整索引
                     print(f"🎤 生成第 {i+1} 段...")
-                    file_path = await self.cvs.send_requests(text, tone_index = self.tone_index)
-                    if file_path:
-                        await self.mission_queue.put((i, file_path))  # 将索引和文件路径一起推入队列
+                    audio_data = await self.cvs.send_requests(text, tone_index = self.tone_index)
+                    if audio_data:
+                        await self.mission_queue.put((i, audio_data))  # 将索引和音频数据推入队列
                     i += 1
                     await asyncio.sleep(0.1)  # 控制生成速度
             await self.mission_queue.put(None)  # 完成信号
-        
+
         # 消费者：播放音频
         async def consumer():
             while True:
                 item = await self.mission_queue.get()
                 if item is None:
                     break
-                index, file_path = item  # 获取文件路径
-                await self.cvs.play_audio(file_path)
+                index, audio_data = item  # 获取音频数据
+                await self.cvs.play_audio(audio_data)
         
         #更新文本队列
         async def update_texts():
@@ -291,24 +265,14 @@ class TTSStreamer:
                 if not self.sentence_queue.empty() if isinstance(self.sentence_queue, Queue) else self.sentence_queue:
                     print("🔄 文本队列更新中...")
                 else:
-                    if self.cvs.json["auto_delete"] and self.mission_queue.empty() and os.path.exists("voice/output/output0.wav"):
-                        self.cvs.delete_audio()  # 如果文本队列空了且任务队列也空了，删除音频文件
+                    if self.mission_queue.empty() and self.cvs._response:
+                        self.cvs.delete_audio()  # 文本队列空了且任务队列也空了，清除内存中的音频缓存
                     await asyncio.sleep(1)  # 挂起一秒等待可能的文本输入
                     self.is_processing = False
-                    # break  # 文本队列空了，结束更新
-        
-        # 模拟外部调用更新文本队列
-        #async def update_texts_imitate():
-        #    """外部调用更新文本队列"""
-        #    for text in re.split(r'[。！？；……]', "阳光透过代码的缝隙洒下来，暖洋洋的。你今天看起来精神不错，是刚调试完一段有趣的算法，还是单纯享受这片刻的宁静？"):
-        #        self.sentence_queue.put(text)
-        #        await asyncio.sleep(2)  # 模拟文本输入的间隔
         
         # 并发运行
         update_texts_task = asyncio.create_task(update_texts())
-        #update_texts_imitate_task = asyncio.create_task(update_texts_imitate())
-        await asyncio.gather(producer(), consumer(), update_texts_task)  # , update_texts_imitate_task
-        #self.is_processing = False
+        await asyncio.gather(producer(), consumer(), update_texts_task)
 
 if __name__ == "__main__":
     # 测试文本列表
