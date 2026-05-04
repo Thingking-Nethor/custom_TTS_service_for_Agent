@@ -8,6 +8,5 @@ dependencies = [
     "aiohttp>=3.13.5",
     "dotenv>=0.9.9",
     "pydantic-ai>=1.87.0",
-    "pydub>=0.25.1",
     "pygame>=2.6.1",
 ]
