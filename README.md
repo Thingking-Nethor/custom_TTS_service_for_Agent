@@ -29,16 +29,12 @@ My_Agent/
 ├── requirments.txt                  # pip 依赖列表
 ├── start.ps1                        # Windows 一键启动脚本
 ├── characters/                      # 角色资源目录
-│   └── 丹德莱/                      # 角色名作为目录名
-│       ├── 丹德莱.json              # 角色元信息（名称、立绘、语音等）
+│   └── your_character_name/                      # 角色名作为目录名
 │       ├── conversation_style_prompt.txt  # 角色人设系统提示词
-│       ├── Dandelion.png            # 角色立绘
-│       ├── dandelion.wav            # 参考音频 (wav)
-│       └── dandelion.mp3            # 参考音频 (mp3)
 ├── voice/                           # 语音模块
 │   ├── customized_voice_service.py  # TTS 核心服务（CVS + TTSStreamer）
 │   ├── config/                      # TTS 配置文件
-│   │   ├── Dandelion.json           # 丹德莱的 GPT-SoVITS 参数
+│   │   ├── your_character_name.json           # 自定义角色的 GPT-SoVITS 参数
 │   │   └── config.json.example      # TTS 配置模板
 │   └── output/                      # 音频保存目录（save_audio=true 时）
 ├── ui/                              # 界面模块
@@ -77,7 +73,7 @@ pip install -r requirments.txt
 ```json
 {
     "voice_config_filename": "Dandelion",   // TTS 配置文件名（不含扩展名）
-    "character_name": "丹德莱",             // 角色名称
+    "character_name": "你的智能体名称",             // 角色名称
     "user_name": "你的名字",                // 用户名
     "tts": {
         "tts_service": true,                // 是否启用 TTS
