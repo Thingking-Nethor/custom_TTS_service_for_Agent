@@ -1,2 +1,2 @@
-uv run -p 3.11 simple_agent.py
+uv run -p 3.11 main.py
 pause
