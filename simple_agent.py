@@ -156,14 +156,13 @@ if __name__ == "__main__":
         exit(1)
 
     # 启动TTS服务（新命令行窗口）
-    if config["tts"].get("auto_start_GPT-SoVITS_api", False):
+    if tts_service_enabled and config["tts"].get("auto_start_GPT-SoVITS_api", False):
         try:
-            if tts_service_enabled:
-                tts_api_process = subprocess.Popen(
-                    f"{script_path}",
-                    creationflags=subprocess.CREATE_NEW_CONSOLE,
-                )
-                print("✅ TTS服务启动成功")
+            tts_api_process = subprocess.Popen(
+                f"{script_path}",
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+            )
+            print("✅ TTS服务启动成功")
         except Exception as e:
             print(f"❌ 启动TTS服务失败: {e}")
             tts_service_enabled = False
