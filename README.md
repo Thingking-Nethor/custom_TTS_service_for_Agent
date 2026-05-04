@@ -48,6 +48,7 @@ My_Agent/
 ## 环境要求
 
 - Python >= 3.11
+- uv
 - Windows
 - [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)（如需 TTS 功能，推荐使用该语音合成软件）
 - DeepSeek API 访问权限
