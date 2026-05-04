@@ -124,16 +124,19 @@ class CVS:
         content = await self._response.read()
 
         # 仅在 save_audio 为 True 时保存到硬盘
-        if self.json.get("save_audio", False):
-            os.makedirs('voice/output', exist_ok=True)
-            file_count = len(os.listdir('voice/output'))
-            if os.path.abspath(self.json.get("output_path")):
-                file_path = os.path.join(self.json["output_path"], f'output{file_count}.wav')
-            else:
-                file_path = f'voice/output/output{file_count}.wav'
-            with open(file_path, 'wb') as f:
-                f.write(content)
-            print(f"✅ 语音已保存至 {file_path}")
+        try:
+            if self.json.get("save_audio", False):
+                os.makedirs('voice/output', exist_ok=True)
+                file_count = len(os.listdir('voice/output'))
+                if os.path.abspath(self.json.get("output_path")):
+                    file_path = os.path.join(self.json["output_path"], f'output{file_count}.wav')
+                else:
+                    file_path = f'voice/output/output{file_count}.wav'
+                with open(file_path, 'wb') as f:
+                    f.write(content)
+                print(f"✅ 语音已保存至 {file_path}")
+        except Exception as e:
+            logging.error(f"❌ 保存音频失败: {e}")
 
         return content  # 返回音频字节数据
     
@@ -202,7 +205,7 @@ class CVS:
         except Exception as e:
             logging.error(f"❌ 音频播放失败：{e}")
         
-    def delete_audio(self):
+    def clear_audio_cache(self):
         '''清除内存中的音频数据'''
         self._response = None  # 清除当前音频数据
         print("✅ 已清除内存中的音频缓存。")
@@ -266,7 +269,7 @@ class TTSStreamer:
                     print("🔄 文本队列更新中...")
                 else:
                     if self.mission_queue.empty() and self.cvs._response:
-                        self.cvs.delete_audio()  # 文本队列空了且任务队列也空了，清除内存中的音频缓存
+                        self.cvs.clear_audio_cache()  # 文本队列空了且任务队列也空了，清除内存中的音频缓存
                     await asyncio.sleep(1)  # 挂起一秒等待可能的文本输入
                     self.is_processing = False
         
