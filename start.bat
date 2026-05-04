@@ -1,0 +1,2 @@
+uv run -p 3.11 main.py
+pause
