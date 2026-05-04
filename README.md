@@ -94,7 +94,7 @@ CONFIG_MODIFICATION_TIMESTAMP=last-modified-timestamp-of-config.json
 
 ### 4. 启动 GPT-SoVITS（如需语音）
 
-确保 GPT-SoVITS 已正确安装，或设置 `auto_start_GPT-SoVITS_api: true` 让程序自动拉起 API 服务。
+确保 GPT-SoVITS 已正确安装，选择外部程序拉起API服务或设置 `auto_start_GPT-SoVITS_api: true` 让程序自动拉起 API 服务。
 
 ### 5. 运行
 
