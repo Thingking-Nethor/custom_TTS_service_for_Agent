@@ -70,7 +70,7 @@ pip install -r requirments.txt
 
 ```json
 {
-    "voice_config_filename": "Dandelion",   // TTS 配置文件名（不含扩展名）
+    "voice_config_filename": "your_character_name",   // TTS 配置文件名（不含扩展名）
     "character_name": "你的智能体名称",             // 角色名称
     "user_name": "你的名字",                // 用户名
     "tts": {
