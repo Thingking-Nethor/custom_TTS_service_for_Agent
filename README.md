@@ -1,4 +1,4 @@
-# My_Agent
+# Customized_TTS_service_for_Agent
 
 一个基于 LLM 的 AI 角色对话桌面应用，集成 GPT-SoVITS 语音合成，支持个性化角色设定与实时语音交互。
 
