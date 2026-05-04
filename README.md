@@ -1,6 +1,6 @@
 # Customized_TTS_service_for_Agent
 
-一个基于 LLM 的 AI 角色对话桌面应用，集成 GPT-SoVITS 语音合成，支持个性化角色设定与实时语音交互。
+一个基于 LLM 的 AI 角色对话桌面应用，集成 GPT-SoVITS 语音合成，设计上也可以支持其他语音合成服务, 支持个性化角色设定与实时语音交互。
 
 ## 项目简介
 
@@ -51,7 +51,7 @@ My_Agent/
 
 - Python >= 3.11
 - Windows / macOS / Linux
-- [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)（如需 TTS 功能）
+- [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)（如需 TTS 功能，推荐使用该语音合成软件）
 - DeepSeek API 访问权限
 
 ## 快速开始
@@ -89,7 +89,7 @@ pip install -r requirments.txt
 
 ```env
 DEEPSEEK_API_KEY=your-api-key
-DEEPSEEK_BASE_URL=https://api.deepseek.com
+CONFIG_MODIFICATION_TIMESTAMP=last-modified-timestamp-of-config.json
 ```
 
 ### 4. 启动 GPT-SoVITS（如需语音）
