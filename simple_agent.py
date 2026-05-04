@@ -84,6 +84,7 @@ def check():
         with open("config.json.example", "r", encoding="utf-8") as f:
             config_example = f.read()
             config_example = re.sub(r"#.*", "", config_example)
+            config_example = re.sub(r" ", "", config_example)    #去掉注释行和空格，生成默认的config.json
         with open("config.json", "w", encoding="utf-8") as f:
             f.write(config_example)
         print("⚠️ 未找到config.json，已创建默认配置文件")
@@ -155,16 +156,17 @@ if __name__ == "__main__":
         exit(1)
 
     # 启动TTS服务（新命令行窗口）
-    try:
-        if tts_service_enabled:
-            tts_api_process = subprocess.Popen(
-                f"{script_path}",
-                creationflags=subprocess.CREATE_NEW_CONSOLE,
-            )
-            print("✅ TTS服务启动成功")
-    except Exception as e:
-        print(f"❌ 启动TTS服务失败: {e}")
-        tts_service_enabled = False
+    if config["tts"].get("auto_start_GPT-SoVITS_api", False):
+        try:
+            if tts_service_enabled:
+                tts_api_process = subprocess.Popen(
+                    f"{script_path}",
+                    creationflags=subprocess.CREATE_NEW_CONSOLE,
+                )
+                print("✅ TTS服务启动成功")
+        except Exception as e:
+            print(f"❌ 启动TTS服务失败: {e}")
+            tts_service_enabled = False
 
     # 运行tts主程序
     if tts_service_enabled:
