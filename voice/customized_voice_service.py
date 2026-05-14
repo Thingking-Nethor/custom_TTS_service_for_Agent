@@ -12,27 +12,38 @@ import io
 import re
 import time
 
-class CVS:
-    '''自定义语音服务类'''
+
+# 配置日志
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+class TTSStreamer:
     def __init__(self, config_file: str = "config"):
-        self.audio_available = True
+        self.audio_available: bool = True
         try:
-            with open(f".\\voice\config\\{config_file}.json", "r", encoding="utf-8") as f:
+            with open(f".\\voice\\config\\{config_file}.json", "r", encoding="utf-8") as f:
                 self.json: dict = json.load(f)
             print(f"✅ 已加载TTS配置文件: {config_file}.json")
         except FileNotFoundError:
             logging.error("❌ TTS配置文件 " + config_file + ".json 未找到")
         except json.JSONDecodeError:
             logging.error("❌ TTS配置文件 " + config_file + ".json 格式错误")
-        self.ts = self.json["text_sign"]
-        self.url = self.json["curl"]
+        self.ts: str = self.json["text_sign"]
+        self.url: str = self.json["curl"]
         self.params: dict = self.json["params"]
-        self._mixer_initialized = False
-        self._current_sound = None
-        self.is_playing = False  # 添加播放状态标志
+        self._mixer_initialized: bool = False
+        self._current_sound: pygame.mixer.Sound = None
+        self.is_playing: bool = False  # 添加播放状态标志
         self._response: bytes = None  # 存储当前响应的音频数据
         print(f"✅ 已加载配置文件，目标字符串: {self.ts}")
-
+        
+        
+        self.is_processing: bool = False
+        self.sentence_queue: Queue[str] = Queue()
+        self.mission_queue = asyncio.Queue()  # 使用 asyncio.Queue 管理任务
+        self.sentences: str = ""  # 存储即将推理的文本
+        self.tone_index: int = 0  # 用于选择语气的索引
+    
+    
     def _filter_text(self, text: str = None):
         """过滤文本"""
         # 过滤括号内容
@@ -67,9 +78,9 @@ class CVS:
             logging.error("param中不包含目标字符串，无法替换文本。")
             return self.params
     
-    async def send_requests(self, text: str = None, tone_index: int = 0):
+    async def send_requests(self, tone_index: int = 0):
         """选择相应的参考音频和参考文本并，发送请求并处理响应"""
-        if not text.strip():
+        if not self.sentences.strip():
             logging.warning("⚠️ 输入文本为空，跳过生成")
             return None
         
@@ -88,16 +99,16 @@ class CVS:
         try:
             # 判断请求类型
             if self.params is None:
-                print(f"✅ 发送GET请求: {self.replace_in_string(text)}...")
+                print(f"✅ 发送GET请求: {self.replace_in_string(self.sentences)}...")
                 async with aiohttp.ClientSession(timeout=timeout) as session:
-                    async with session.get(self.replace_in_string(text)) as self._response:
+                    async with session.get(self.replace_in_string(self.sentences)) as self._response:
                         return await self._handle_response()
             else:
                 print(f"✅ 发送POST请求: {self.url}...")
                 async with aiohttp.ClientSession(timeout=timeout) as session:
                     async with session.post(
                         self.url, 
-                        json=self.replace_in_dict(text)
+                        json=self.replace_in_dict(self.sentences)
                     ) as self._response:
                         return await self._handle_response()
         
@@ -209,22 +220,12 @@ class CVS:
         '''清除内存中的音频数据'''
         self._response = None  # 清除当前音频数据
         print("✅ 已清除内存中的音频缓存。")
-
-
-# 配置日志
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-class TTSStreamer:
-    def __init__(self, config_file: str):
-        self.cvs = CVS(config_file)
-        self.is_processing: bool = False
-        self.sentence_queue: Queue[str] = Queue()
-        self.mission_queue = asyncio.Queue()  # 使用 asyncio.Queue 管理任务
-        self.tone_index: int = 0  # 用于选择语气的索引
+    
+    
     
     def _push_text(self, text: str):
         """向文本队列中添加文本"""
-        self.sentence_queue.put(self.cvs._filter_text(text))  #调用文本过滤函数
+        self.sentence_queue.put(self._filter_text(text))  #调用文本过滤函数
         print(f"✅ 已添加文本到队列: {text}")
     
     def _change_tone(self, tone_index: int):
@@ -242,10 +243,10 @@ class TTSStreamer:
             while not update_texts_task.done():
                 await asyncio.sleep(0.5)
                 while not self.sentence_queue.empty() if isinstance(self.sentence_queue, Queue) else self.sentence_queue:
-                    text = self.sentence_queue.get() if isinstance(self.sentence_queue, Queue) else self.sentence_queue.pop(0)
+                    self.sentences = self.sentence_queue.get() if isinstance(self.sentence_queue, Queue) else self.sentence_queue.pop(0)
                     i = 0  # 这里可以根据需要调整索引
                     print(f"🎤 生成第 {i+1} 段...")
-                    audio_data = await self.cvs.send_requests(text, tone_index = self.tone_index)
+                    audio_data = await self.send_requests(tone_index = self.tone_index)
                     if audio_data:
                         await self.mission_queue.put((i, audio_data))  # 将索引和音频数据推入队列
                     i += 1
@@ -259,7 +260,7 @@ class TTSStreamer:
                 if item is None:
                     break
                 index, audio_data = item  # 获取音频数据
-                await self.cvs.play_audio(audio_data)
+                await self.play_audio(audio_data)
         
         #更新文本队列
         async def update_texts():
@@ -268,8 +269,8 @@ class TTSStreamer:
                 if not self.sentence_queue.empty() if isinstance(self.sentence_queue, Queue) else self.sentence_queue:
                     print("🔄 文本队列更新中...")
                 else:
-                    if self.mission_queue.empty() and self.cvs._response:
-                        self.cvs.clear_audio_cache()  # 文本队列空了且任务队列也空了，清除内存中的音频缓存
+                    if self.mission_queue.empty() and self._response:
+                        self.clear_audio_cache()  # 文本队列空了且任务队列也空了，清除内存中的音频缓存
                     await asyncio.sleep(1)  # 挂起一秒等待可能的文本输入
                     self.is_processing = False
         
@@ -283,7 +284,7 @@ if __name__ == "__main__":
     streamer = TTSStreamer("Dandelion")  #根据需要替换为你的配置文件名（json文件，不带扩展名）
     # 运行主程序
     streamer._push_text(text0)
-    for t in re.split(r'[。！？；……]', "阳光透过代码的缝隙洒下来，暖洋洋的。你今天看起来精神不错，是刚调试完一段有趣的算法，还是单纯享受这片刻的宁静？"):
+    for t in re.split(r'[。！？；…… . ]', "阳光透过代码的缝隙洒下来，暖洋洋的。你今天看起来精神不错，是刚调试完一段有趣的算法，还是单纯享受这片刻的宁静？"):
         streamer._push_text(t)
     asyncio.run(streamer.generate_stream())
     os.system("pause")
