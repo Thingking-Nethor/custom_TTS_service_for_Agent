@@ -31,7 +31,7 @@ class TTSStreamer:
         self.url: str = self.json["curl"]
         self.params: dict = self.json["params"]
         self._mixer_initialized: bool = False
-        self._current_sound: pygame.mixer.Sound = None
+        self._current_sound = None
         self.is_playing: bool = False  # 添加播放状态标志
         self._response: bytes = None  # 存储当前响应的音频数据
         print(f"✅ 已加载配置文件，目标字符串: {self.ts}")
@@ -78,7 +78,7 @@ class TTSStreamer:
             logging.error("param中不包含目标字符串，无法替换文本。")
             return self.params
     
-    async def send_requests(self, tone_index: int = 0):
+    async def send_requests(self):
         """选择相应的参考音频和参考文本并，发送请求并处理响应"""
         if not self.sentences.strip():
             logging.warning("⚠️ 输入文本为空，跳过生成")
@@ -87,8 +87,8 @@ class TTSStreamer:
         # 根据索引选择参考音频和参考文本
         if self.json["variable_ref_audio_and_prompt_text"]:
             if self.json["ref_audio_path_list"] and self.json["prompt_text_list"]:
-                self.params["ref_audio_path"] = self.json["ref_audio_path_list"][tone_index]
-                self.params["prompt_text"] = self.json["prompt_text_list"][tone_index]
+                self.params["ref_audio_path"] = self.json["ref_audio_path_list"][self.tone_index]
+                self.params["prompt_text"] = self.json["prompt_text_list"][self.tone_index]
                 print(f"✅ 选择参考音频: {self.params['ref_audio_path']}\n✅ 选择参考文本: {self.params['prompt_text']}")
             else:
                 pass  # 如果没有提供列表，就使用默认的参数值（不替换）
@@ -153,12 +153,12 @@ class TTSStreamer:
     
     async def play_audio(self, audio_data: bytes):
         '''播放音频（直接从内存）'''
-        print("▶️ 开始播放音频...")
-
         if not audio_data:
             logging.warning("音频数据为空")
             return
 
+        print("▶️ 开始播放音频...")
+        
         try:
             # 确保 mixer 只初始化一次
             if not self._mixer_initialized:
@@ -166,7 +166,7 @@ class TTSStreamer:
                     pygame.mixer.init(
                         frequency=self.json.get("output_frequency", 22050),
                         size=self.json.get("output_size", -16),
-                        channels=2,
+                        channels=self.json.get("output_channels", 1),
                         buffer=512
                     )
                     self._mixer_initialized = True
@@ -246,7 +246,7 @@ class TTSStreamer:
                     self.sentences = self.sentence_queue.get() if isinstance(self.sentence_queue, Queue) else self.sentence_queue.pop(0)
                     i = 0  # 这里可以根据需要调整索引
                     print(f"🎤 生成第 {i+1} 段...")
-                    audio_data = await self.send_requests(tone_index = self.tone_index)
+                    audio_data = await self.send_requests()
                     if audio_data:
                         await self.mission_queue.put((i, audio_data))  # 将索引和音频数据推入队列
                     i += 1
