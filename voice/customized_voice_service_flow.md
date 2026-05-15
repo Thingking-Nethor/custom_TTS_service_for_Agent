@@ -14,7 +14,7 @@ flowchart TD
     D --> F["producer()<br/>等待文本 + 请求 API"]
     D --> G["consumer()<br/>从 mission_queue 取音频并播放"]
 
-    F --> H["send_requests(tone_index)<br/>根据索引选择参考音频/文本<br/>构造 GET 或 POST 请求"]
+    F --> H["send_requests()<br/>根据self.tone_index索引选择参考音频/文本<br/>构造 GET 或 POST 请求"]
 
     H --> I["_handle_response()<br/>检查 HTTP 状态码<br/>可选保存 WAV 文件<br/>返回音频 bytes"]
 
@@ -75,9 +75,9 @@ sequenceDiagram
     prod->>push: sentence_queue.get()
     push-->>prod: sentences = text
 
-    prod->>send: send_requests(tone_index)
+    prod->>send: send_requests()
 
-    send->>send: 根据 tone_index 选择参考音频/文本
+    send->>send: 根据 self.tone_index 选择参考音频/文本
     send->>send: replace_in_dict() 替换参数
 
     alt params 为 None
@@ -155,7 +155,7 @@ sequenceDiagram
 | **文本入队** | `_push_text` → `_filter_text` | 外部调用，过滤括号/特殊字符后放入 `sentence_queue` |
 | **流式启动** | `generate_stream` | 创建 3 个协程并发运行：`update_texts`(监控)、`producer`(生产者)、`consumer`(消费者) |
 | **生产者** | `producer` | 等待 `update_texts_task` 结束；从 `sentence_queue` 取文本 → `send_requests()` → 音频入 `mission_queue` |
-| **请求API** | `send_requests` | 根据 `tone_index` 选择参考音频/文本，构造 GET 或 POST 请求发送给 TTS 服务 |
+| **请求API** | `send_requests` | 根据 `self.tone_index` 选择参考音频/文本，构造 GET 或 POST 请求发送给 TTS 服务 |
 | **处理响应** | `_handle_response` | 校验 HTTP 200 → 读 bytes → 可选保存 WAV 文件 → 返回音频数据 |
 | **消费者** | `consumer` | 从 `mission_queue` 取 `(index, audio_data)` → 调用 `play_audio()` |
 | **播放** | `play_audio` | 按需初始化 pygame mixer → 停止旧音频 → `Sound(io.BytesIO)` 从内存播放 → 轮询 `get_busy()` 等待结束 |
@@ -186,7 +186,7 @@ classDiagram
         +_push_text(text)
         +_change_tone(index)
         +generate_stream()
-        -send_requests(tone_index)
+        -send_requests()
         -_handle_response()
         -play_audio(data)
         -_filter_text(text)
