@@ -1,0 +1,38 @@
+{
+    "text_sign": "${text}",
+    "curl": "http://127.0.0.1:9880/tts",
+    "params": {
+        "text": "${text}",
+        "text_lang": "zh",
+        "ref_audio_path": "",
+        "aux_ref_audio_paths": [],
+        "prompt_text": "",
+        "prompt_lang": "all_zh",
+        "top_k": 5,
+        "top_p": 1, 
+        "temperature": 1,
+        "text_split_method": "cut0",
+        "batch_size": 1,
+        "batch_threshold": 0.75,
+        "split_bucket": true,
+        "speed_factor": 1.0,
+        "streaming_mode": false,
+        "seed": -1,
+        "parallel_infer": true,
+        "repetition_penalty": 1.35,
+        "sample_steps": 32,
+        "super_sampling": false
+    },
+    "variable_ref_audio_and_prompt_text": false,
+    "ref_audio_path_list": [
+    ],
+    "prompt_text_list": [
+    ],
+    "filter_brackets": true,
+    "filter_special_chars": true,
+    "output_frequency": 44100,
+    "output_channels": 1,
+    "output_size": -16,
+    "save_audio": false,
+    "output_path": ""    #填写绝对路径，程序默认为相对路径".\voice\output\output"
+}
